@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
+import speech_recognition as sr
 import string
 from easygui import buttonbox
 import string
@@ -17,25 +18,40 @@ def index():
 
 @app.route('/process', methods=['POST'])
 def process():
-    text = request.form.get('text', '')
+    # text = request.form.get('text', '')
     audio = request.files.get('audio')  # Handle audio input
+    audio = 1
+    file_path = "recording.wav"
+    # audio.save(file_path)
+    recognizer = sr.Recognizer()
+    try:
+        with sr.Microphone(0) as source:
+            audio = recognizer.record(source)
+            transcription = recognizer.recognize_google(audio)
+            print(transcription)
+            os.remove(file_path)  # Clean up
+            if audio:
+                return handle_audio_input(transcription)
+            else:
+                return jsonify({"message": "No input provided"})
+            #return jsonify({'transcription': transcription})
+    except sr.UnknownValueError:
+        os.remove(file_path)
+        return jsonify({'error': 'Google Speech Recognition could not understand audio'}), 500
+    except sr.RequestError as e:
+        os.remove(file_path)
+        return jsonify({'error': f'Could not request results from Google Speech Recognition service; {e}'}), 500
 
-    if text:
-        return handle_text_input(text)
-    elif audio:
-        return handle_audio_input(audio)
-    else:
-        return jsonify({"message": "No input provided"})
 
 def handle_text_input(text):
     result = "Processing complete!"
     # Process text to video/gif here
-    video_url = 'static/ISL_Gifs/sample_video.mp4'  # Example video path
+    video_url = f"static/ISL_Gifs/{text}.mp4"  # Example video path
     return jsonify({"message": result, "video_url": video_url})
 
-def handle_audio_input(audio):
+def handle_audio_input(transcription):
     # Process audio here using speech_recognition or similar
-    recognized_text = "example recognized text"
+    recognized_text = transcription
     return handle_text_input(recognized_text)
 
 def play_video(mp4_path, desired_width=640, desired_height=480):
@@ -181,15 +197,15 @@ def func():
             except Exception as e:
                 print(f"An error occurred: {e}")
 
-while True:
-    image = "static/signlang.png"
-    msg = "HEARING IMPAIRMENT ASSISTANT"
-    choices = ["Live Voice", "All Done!"]
-    reply = buttonbox(msg, image=image, choices=choices)
-    if reply == choices[0]:
-        func()
-    elif reply == choices[1]:
-        break
+# while True:
+#     image = "static/signlang.png"
+#     msg = "HEARING IMPAIRMENT ASSISTANT"
+#     choices = ["Live Voice", "All Done!"]
+#     reply = buttonbox(msg, image=image, choices=choices)
+#     if reply == choices[0]:
+#         func()
+#     elif reply == choices[1]:
+#         break
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
